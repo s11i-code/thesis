@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "lib": ["es2019", "dom"],
+    "moduleResolution": "node",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "sourceMap": true,
+    "target": "es2017",
+    "outDir": "build",
+    "module": "commonjs",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+  },
+  "exclude": ["node_modules"]
+}
