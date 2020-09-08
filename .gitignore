@@ -5,6 +5,10 @@
 **/.pnp
 .pnp.js
 
+#because of typescript
+src/*.js
+
+layout-breaker/data/*
 # testing
 /coverage
 

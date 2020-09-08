@@ -1,16 +1,21 @@
 {
   "compilerOptions": {
+    "rootDir": "./src",
     "lib": ["es2019", "dom"],
     "moduleResolution": "node",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "sourceMap": true,
-    "target": "es2017",
+    "target": "es2019",
     "outDir": "build",
-    "module": "commonjs",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "allowJs": true,
+    "importHelpers": true,
+    "noEmitHelpers": true,
   },
-  "exclude": ["node_modules"]
+
+  "include": [
+    "src/**/*"
+  ],
+
+  "exclude": ["node_modules"] 
 }

@@ -5,13 +5,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint 'index.ts' --fix",
-    "scrape:debug": "rm -rf tmp && node_modules/.bin/ts-node index.ts --devtools",
+    "lint": "eslint 'src/index.ts' --fix",
+    "scrape:debug": "DEBUG=true npm run scrape ",
     "scrape:clear": "rm -rf tmp && npm run scrape",
-    "scrape": "node_modules/.bin/ts-node index.ts --headless",
-    "sync": "aws s3 sync ./tmp/ s3://todo-create-bucket  --profile satu-personal-cli --acl public-read",
+    "scrape": "npx ts-node src/index.ts --debug=$DEBUG --site=$SITE --folder=$FOLDER --contindex=$CONTINDEX",
+    "sync": "aws s3 sync ./tmp/ s3://layout-bug-detection-dataset  --profile satu-personal-cli --acl public-read",
     "scrape-sync": "npm run scrape && npm run sync",
-    "compile": "tsc --esModuleInterop index.ts"
+    "compile": "tsc --esModuleInterop src/index.ts"
   },
   "author": "",
   "license": "ISC",
@@ -29,10 +29,14 @@
     "@types/puppeteer": "^1.20.2",
     "minimist": "^1.2.5",
     "puppeteer": "^5.1.0",
+    "puppeteer-cluster": "^0.22.0",
+    "random-hash": "^4.0.1",
     "random-sentence": "^1.0.4",
+    "random-words": "^1.1.1",
     "shortid": "^2.2.15",
     "string-hash": "^1.1.3",
-    "ts-node": "^8.4.1",
+    "ts-node": "^9.0.0",
+    "tslib": "^2.0.1",
     "typescript": "^3.6.4"
   }
 }
