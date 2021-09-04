@@ -1,29 +1,10 @@
+/* eslint-disable @typescript-eslint/ban-ts-ignore */
 import { Page } from "puppeteer";
 import { ContainerList } from "./types";
 
 export async function getContainers(page: Page, contIndex: number): Promise<ContainerList> {
   return page.evaluateHandle(async (contIndex: number) => {
     const viewport = { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight };
-
-    function elementIsVisible(startElement: HTMLElement): boolean {
-      // todo: check these techniques: https://webaim.org/techniques/css/invisiblecontent
-      let element = startElement;
-      while (element && !element.tagName.match(/body/i)) {
-        const takesSpace = [element.offsetWidth, element.offsetHeight].every((offset) => offset > 0);
-        if (!takesSpace) {
-          return false;
-        }
-        const { display, visibility, opacity, clip } = window.getComputedStyle(element);
-        const visible =
-          takesSpace && visibility !== "hidden" && display !== "none" && opacity !== "0" && clip !== "rect(1px, 1px, 1px, 1px)";
-        if (!visible) {
-          return false;
-        }
-        element = element.parentElement;
-      }
-      return true;
-    }
-
     const isInViewport = (bounding: DOMRect): boolean =>
       bounding.top >= 0 && bounding.left >= 0 && bounding.right <= viewport.width && bounding.bottom <= viewport.height;
 
@@ -45,13 +26,14 @@ export async function getContainers(page: Page, contIndex: number): Promise<Cont
       const hasText = cont.innerText.length > 0;
       const rect = cont.getBoundingClientRect();
       const dupeCount = occurrences[JSON.stringify(rect)] || 0;
-      if (hasText && dupeCount < dupesAllowed && isInViewport(rect) && isOptimalSize(rect) && elementIsVisible(cont)) {
+      //@ts-ignore Cannot find name 'isVisibleInDOM'.ts(2304)
+      if (hasText && dupeCount < dupesAllowed && isInViewport(rect) && isOptimalSize(rect) && isVisibleInDOM(cont)) {
         containers.push(cont);
         occurrences[JSON.stringify(rect)] = dupeCount + 1;
       }
     });
     if (contIndex) {
-      return [containers[contIndex]];
+      return containers[contIndex] ? [containers[contIndex]] : [];
     }
 
     return containers;

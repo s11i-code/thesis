@@ -2,17 +2,7 @@ import { Resolution, ContainerList } from "./types";
 import fs from "fs";
 import { Page } from "puppeteer";
 
-// RANDOM STUFF
-export function getRandomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (Math.floor(max) - Math.ceil(min) + 1)) + min;
-}
-
-export function getRandomElement<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
 // FILES
-
 export async function ensureFolderExists(path: string): Promise<any> {
   return fs.mkdir(path, { recursive: true }, (err) => {
     if (err) {
@@ -25,13 +15,14 @@ export async function ensureFolderExists(path: string): Promise<any> {
 interface GetFileNameParams {
   viewport?: Resolution;
   url?: string;
-  start?: string | number;
-  end: string | number;
+  prefix?: string;
+  postfix: string;
 }
-export function getFileName({ viewport, url, start = "", end = "" }: GetFileNameParams): string {
+
+export function getFileName({ viewport, url, prefix = "", postfix = "" }: GetFileNameParams): string {
   const resStr = viewport ? `${viewport.width}x${viewport.height}` : "";
   const hostname = url ? new URL(url).hostname : "";
-  return [start, hostname, resStr, end].filter((x) => x).join("-");
+  return [prefix, hostname, resStr, postfix].filter((x) => x).join("-");
 }
 
 //SCREENSHOTTING
@@ -54,19 +45,18 @@ export async function screenshotElements({ page, elements, filepath }: Screensho
 
   await Promise.all(
     rects.map((rect, idx: number) => {
-      screenshotRect({ rect, filepath: `${filepath}-${idx}`, page });
+      screenshotRect(page, { rect, filepath: `${filepath}-${idx}` });
     })
   );
   return rects.length;
 }
 
 export interface ScreenshotRectParams {
-  page: Page;
   rect: DOMRect;
   padding?: number;
   filepath: string;
 }
-export async function screenshotRect({ page, rect, filepath, padding = 2 }: ScreenshotRectParams): Promise<any> {
+export async function screenshotRect(page: Page, { rect, filepath, padding = 2 }: ScreenshotRectParams): Promise<any> {
   const clip = {
     x: Math.max(0, rect.left - padding),
     y: Math.max(0, rect.top - padding),

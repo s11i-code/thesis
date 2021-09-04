@@ -2,16 +2,15 @@
   "name": "layout-breaker",
   "version": "1.0.0",
   "description": "generate images from broken layouts for fun and science",
-  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint 'src/index.ts' --fix",
     "scrape:debug": "DEBUG=true npm run scrape ",
     "scrape:clear": "rm -rf tmp && npm run scrape",
-    "scrape": "npx ts-node src/index.ts --debug=$DEBUG --site=$SITE --folder=$FOLDER --contindex=$CONTINDEX",
+    "scrape": "npm run compile && node build/index.js  --debug=$DEBUG --site=$SITE --folder=$FOLDER --contindex=$CONTINDEX",
     "sync": "aws s3 sync ./tmp/ s3://layout-bug-detection-dataset  --profile satu-personal-cli --acl public-read",
     "scrape-sync": "npm run scrape && npm run sync",
-    "compile": "tsc --esModuleInterop src/index.ts"
+    "compile": "tsc"
   },
   "author": "",
   "license": "ISC",
