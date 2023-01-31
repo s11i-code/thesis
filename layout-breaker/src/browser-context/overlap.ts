@@ -1,11 +1,18 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 /* eslint-disable @typescript-eslint/ban-ts-ignore */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 type Direction = "vertical" | "horizontal";
 type Side = "top" | "bottom" | "right" | "left";
+// @ts-ignore
+if (!exports) {
+  const exports = {};
+}
 
+// eslint-ignore no-namespace
 export async function generateOverlapScreenshots({ containers, filepath }): Promise<number> {
   let count = 0;
+  debugger;
   await Promise.all(
     containers.map(async (container: HTMLElement, idx: number) => {
       const randomChildIdx = getRandomInt(0, container.childElementCount - 1);
@@ -33,7 +40,7 @@ export async function generateOverlapScreenshots({ containers, filepath }): Prom
       child.style.display = `inline-block`;
       count++;
       //@ts-ignore 'Cannot find namescreenshotRect'
-      await screenshotRect({ rect: contRect, filepath: `${filepath}-${idx}` });
+      await screenshotRect({ rect: contRect, filepath: `${idx}-${filepath}` });
 
       //reset margin:
       child.style[`display`] = `${prevDisplay}`;

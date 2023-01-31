@@ -6,7 +6,7 @@ import { Page } from "puppeteer";
 export async function ensureFolderExists(path: string): Promise<any> {
   return fs.mkdir(path, { recursive: true }, (err) => {
     if (err) {
-      console.log("Error while creating the folder", err);
+      //console.log(`Error while creating folder ${path}`, JSON.stringify(err));
       return;
     }
   });
@@ -45,7 +45,7 @@ export async function screenshotElements({ page, elements, filepath }: Screensho
 
   await Promise.all(
     rects.map((rect, idx: number) => {
-      screenshotRect(page, { rect, filepath: `${filepath}-${idx}` });
+      screenshotRect(page, { rect, filepath: `${idx}-${filepath}` });
     })
   );
   return rects.length;
