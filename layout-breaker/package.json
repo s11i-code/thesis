@@ -5,9 +5,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint 'src/index.ts' --fix",
-    "scrape:debug": "DEBUG=true npm run scrape",
+    "scrape:debug": "npm run compile && node build/index.js --debug=true",
     "scrape:clear": "rm -rf tmp && npm run scrape",
-    "scrape": "npm run compile && node --inspect build/index.js  --debug=$DEBUG --site=$SITE --folder=$FOLDER --contindex=$CONTINDEX",
+    "scrape": "npm run compile && node build/index.js",
     "sync": "aws s3 sync ./tmp/ s3://layout-bug-detection-dataset  --profile satu-personal-cli --acl public-read",
     "scrape-sync": "npm run scrape && npm run sync",
     "compile": "rm -rf build && tsc"

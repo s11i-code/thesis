@@ -45,7 +45,7 @@ export async function screenshotElements({ page, elements, filepath }: Screensho
 
   await Promise.all(
     rects.map((rect, idx: number) => {
-      screenshotRect(page, { rect, filepath: `${idx}-${filepath}` });
+      screenshotRect(page, { rect, filepath: `${filepath}-${idx}` });
     })
   );
   return rects.length;
