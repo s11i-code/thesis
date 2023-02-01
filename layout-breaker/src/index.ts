@@ -3,7 +3,7 @@ import minimist from "minimist";
 import puppeteer from "puppeteer";
 import { Cluster } from "puppeteer-cluster";
 import generateHash from "random-hash";
-import { ContainerList, Resolution } from "./types";
+import { Resolution } from "./types";
 import { ensureFolderExists, getFileName, screenshotElements } from "./utils";
 import { getContainers } from "./getContainers";
 import { Page } from "puppeteer";
@@ -14,6 +14,11 @@ import SITES from "./sites";
 
 import { screenshotRect } from "./utils";
 import randomWords from "random-words";
+
+// ways of sharing:
+// - addScriptTag
+// - exposeFunction
+// - pass as parameter to page evaluate (only elementhandles)
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { generateOverlapScreenshots } from "./browser-context/overlap";
@@ -52,7 +57,8 @@ const DEBUG_MODE = !!debug;
 const extraArgs = Object.keys(rest).filter((key) => !["_"].includes(key));
 
 if (extraArgs.length > 0) {
-  throw new Error(`Unknown command line argument(s): ${JSON.stringify(rest)}`);
+  console.error(`Unknown command line argument(s): ${JSON.stringify(rest)}`);
+  process.exit();
 }
 
 console.log(`Starting scraping DEBUG_MODE ${DEBUG_MODE}, with args: ${JSON.stringify(args)}`);
@@ -89,7 +95,7 @@ const RUN_PARALLEL = false;
     await cluster.task(scrapeSite);
 
     cluster.on("taskerror", (err, data) => {
-      console.log(`------ERROR CRAWLING ${data.manipulation.toUpperCase()} ${data.site}-${data.viewport.width}x${data.viewport.height}`);
+      console.error(`------ERROR CRAWLING ${data.manipulation.toUpperCase()} ${data.site}-${data.viewport.width}x${data.viewport.height}`);
       console.log(`\n${err.filename}`);
       console.log(`\n${err.message}`);
       console.log(err.stack);
@@ -113,7 +119,7 @@ const RUN_PARALLEL = false;
         } else {
           const browser = await puppeteer.launch();
           const page = await browser.newPage();
-          scrapeSite({ page, data: taskData });
+          await scrapeSite({ page, data: taskData }).catch((err) => console.error("Encountered error", JSON.stringify(err)));
         }
       }
     });
@@ -130,11 +136,11 @@ async function scrapeSite({ page, data }: { page: Page; data: TaskData }): Promi
   const { site, viewport, manipulation, baseFolder } = data;
 
   await page.setBypassCSP(true);
-  await page.goto(site, { waitUntil: "networkidle2", timeout: 0 });
+  await page
+    .goto(site, { waitUntil: "networkidle2", timeout: 0 })
+    .catch((error) => console.error(`Error accessing  ${site}: ${JSON.stringify(error)}`));
   await page.setViewport({ ...viewport, deviceScaleFactor: 1 });
   await page.addScriptTag({ path: "./build/browser-context/index.js" });
-  await page.addScriptTag({ path: "./build/browser-context/overlap.js" });
-  await page.addScriptTag({ path: "./build/browser-context/overflow.js" });
 
   // print page context logs to terminal(=node context):
   page.on("console", (consoleObj) => {
@@ -148,8 +154,6 @@ async function scrapeSite({ page, data }: { page: Page; data: TaskData }): Promi
   const entirePagesFolder = `${BASE_FOLDER}/entire-pages`;
   await ensureFolderExists(entirePagesFolder);
   await page.exposeFunction("screenshotRect", (params) => screenshotRect(page, params));
-  await page.exposeFunction("generateOverflowScreenshots", (params) => screenshotRect(page, params));
-  await page.exposeFunction("screenshotRect", (params) => screenshotRect(page, params));
   await page.exposeFunction("randomWords", randomWords);
 
   // GET SCREENSHOT ELEMENTS
@@ -157,22 +161,17 @@ async function scrapeSite({ page, data }: { page: Page; data: TaskData }): Promi
   const filepath = `${folderName}/${getFileName({ viewport, url: site, postfix: EXECUTION_ID })}`;
 
   let promise = null;
+
   if (manipulation === OVERFLOW) {
-    promise = page.evaluate(
-      async (containers: ContainerList, filepath: string) => {
-        return await generateOverflowScreenshots({ containers, filepath });
-      },
-      containers,
-      filepath
-    );
-  } else if (manipulation === OVERLAP) {
-    promise = page.evaluate(
-      async (containers: ContainerList, generateOverlapScreenshots, filepath: string) => {
-        return await generateOverlapScreenshots({ containers, filepath });
-      },
-      containers,
-      filepath
-    );
+    promise = generateOverflowScreenshots({ page, containers, filepath });
+    // } else if (manipulation === OVERLAP) {
+    //   promise = page.evaluate(
+    //     async (containers: ContainerList, generateOverlapScreenshots, filepath: string) => {
+    //       return await generateOverlapScreenshots({ containers, filepath });
+    //     },
+    //     containers,
+    //     filepath
+    //   );
   } else if (manipulation === UNTOUCHED) {
     promise = screenshotElements({ page, elements: containers, filepath });
   } else {

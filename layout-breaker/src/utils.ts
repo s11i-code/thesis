@@ -25,10 +25,9 @@ export function getFileName({ viewport, url, prefix = "", postfix = "" }: GetFil
   return [prefix, hostname, resStr, postfix].filter((x) => x).join("-");
 }
 
-//SCREENSHOTTING
 export interface ScreenshotElementsParams {
   page: Page;
-  elements: ContainerList; // TODO
+  elements: ContainerList;
   padding?: number;
   filepath: string;
 }
