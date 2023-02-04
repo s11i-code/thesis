@@ -53,6 +53,7 @@ export async function generateOverlapScreenshots(params: Params): Promise<number
       })
     );
     return count;
+
     function meanOfAbs(arr: number[]): number {
       const sum = arr.reduce((prev, curr) => {
         return prev + Math.abs(curr);

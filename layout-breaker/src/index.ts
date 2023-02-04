@@ -8,10 +8,6 @@ import { ensureFolderExists, getFileName, screenshotElements } from "./utils";
 import { getContainers } from "./getContainers";
 import { Page } from "puppeteer";
 import SITES from "./sites";
-// imported so that typescript compiles the files
-// import "./browser-context/overlap";
-// import "./browser-context/overflow";
-
 import { screenshotRect } from "./utils";
 import randomWords from "random-words";
 
@@ -46,17 +42,16 @@ interface Args {
   site: string;
   _: any; //something added by minimist?
 }
-const args: Args = minimist<Args>(process.argv.slice(2));
+const args: Args = filterObject(minimist<Args>(process.argv.slice(2)), ["_"]);
 
 const DEFAULT_FOLDER = "layout-breaker-images";
-const { folder: BASE_FOLDER = DEFAULT_FOLDER, debug, contindex, site: SITE, ...rest } = args;
+const { folder: BASE_FOLDER = DEFAULT_FOLDER, debug, contindex, site: SITE, _, ...extraArgs } = args;
 
+debugger;
 const CONT_INDEX = contindex ? parseInt(contindex) : undefined;
 const DEBUG_MODE = !!debug;
 
-const extraArgs = Object.keys(rest).filter((key) => !["_"].includes(key));
-
-if (extraArgs.length > 0) {
+if (Object.keys(extraArgs).length > 0) {
   console.error(`Unknown command line argument(s): ${extraArgs}.`);
   process.exit();
 }
@@ -84,13 +79,13 @@ const clusterConfig = {
   concurrency: Cluster.CONCURRENCY_CONTEXT
 };
 
-const RUN_PARALLEL = false;
+const RUN_PARALLEL = true;
 
 (async (): Promise<void> => {
   let cluster = undefined;
 
   if (RUN_PARALLEL) {
-    cluster = Cluster.launch(clusterConfig);
+    cluster = await Cluster.launch(clusterConfig);
 
     await cluster.task(scrapeSite);
 
@@ -204,4 +199,8 @@ async function scrapeSite({ page, data }: { page: Page; data: TaskData }): Promi
       path: `${entirePagesFolder}/${getFileName({ viewport, url: site, prefix: EXECUTION_ID, postfix: "containers" })}.png`
     });
   }
+}
+
+function filterObject<T extends Record<string, any>, K extends string>(o: T, keys: K[]): Omit<T, K> {
+  return Object.fromEntries(Object.entries(o).filter(([key]) => keys.includes(key))) as Omit<T, K>;
 }
