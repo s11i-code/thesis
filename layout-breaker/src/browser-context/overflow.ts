@@ -6,11 +6,10 @@ import { ContainerList } from "../types";
 export interface Params {
   page: Page;
   containers: ContainerList;
-  filepath: string;
 }
 
 export async function generateOverflowScreenshots(params: Params): Promise<number> {
-  return await params.page.evaluate(async (params) => {
+  return await params.page.evaluate(async (containers) => {
     function getClosestBlockParent(startElement: HTMLElement): HTMLElement {
       let element = startElement;
       while (window.getComputedStyle(element)["display"] !== "block") {
@@ -85,8 +84,6 @@ export async function generateOverflowScreenshots(params: Params): Promise<numbe
       }
     }
 
-    const { containers, filepath } = params;
-
     let count = 0;
     await Promise.all(
       Array.from(containers).map(async (cont: HTMLElement, idx: number) => {
@@ -101,10 +98,11 @@ export async function generateOverflowScreenshots(params: Params): Promise<numbe
           return Promise.resolve();
         }
 
-        await generateOverflow(randDescendent, `${filepath}-${idx}`, cont);
+        //@ts-ignore Cannot find name 'getFilenamePrefix'.ts(2304)
+        await generateOverflow(randDescendent, `${await getFileNamePrefix()}-${idx}`, cont);
         count++;
       })
     );
     return count;
-  }, params);
+  }, params.containers);
 }

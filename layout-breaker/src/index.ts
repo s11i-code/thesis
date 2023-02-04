@@ -57,7 +57,7 @@ const DEBUG_MODE = !!debug;
 const extraArgs = Object.keys(rest).filter((key) => !["_"].includes(key));
 
 if (extraArgs.length > 0) {
-  console.error(`Unknown command line argument(s): ${JSON.stringify(rest)}`);
+  console.error(`Unknown command line argument(s): ${extraArgs}.`);
   process.exit();
 }
 
@@ -117,9 +117,14 @@ const RUN_PARALLEL = false;
         if (cluster) {
           cluster.queue(taskData);
         } else {
-          const browser = await puppeteer.launch();
-          const page = await browser.newPage();
-          await scrapeSite({ page, data: taskData }).catch((err) => console.error("Encountered error", JSON.stringify(err)));
+          if (manipulation === OVERLAP) {
+            const browser = await puppeteer.launch();
+            const page = await browser.newPage();
+            await scrapeSite({ page, data: taskData }).catch((err) => {
+              console.error("Encountered error", JSON.stringify(err));
+              console.error("Encountered error", err.stack);
+            });
+          }
         }
       }
     });
@@ -140,6 +145,7 @@ async function scrapeSite({ page, data }: { page: Page; data: TaskData }): Promi
     .goto(site, { waitUntil: "networkidle2", timeout: 0 })
     .catch((error) => console.error(`Error accessing  ${site}: ${JSON.stringify(error)}`));
   await page.setViewport({ ...viewport, deviceScaleFactor: 1 });
+
   await page.addScriptTag({ path: "./build/browser-context/index.js" });
 
   // print page context logs to terminal(=node context):
@@ -152,49 +158,45 @@ async function scrapeSite({ page, data }: { page: Page; data: TaskData }): Promi
   await ensureFolderExists(folderName);
 
   const entirePagesFolder = `${BASE_FOLDER}/entire-pages`;
+  const filename = getFileName({ viewport, url: site, prefix: EXECUTION_ID, postfix: manipulation });
   await ensureFolderExists(entirePagesFolder);
+
+  console.log("FILENAME", `${folderName}/${filename}`);
   await page.exposeFunction("screenshotRect", (params) => screenshotRect(page, params));
+  await page.exposeFunction("getFileNamePrefix", () => `${folderName}/${filename}`);
   await page.exposeFunction("randomWords", randomWords);
 
   // GET SCREENSHOT ELEMENTS
   const containers = await getContainers(page, CONT_INDEX);
+
   const filepath = `${folderName}/${getFileName({ viewport, url: site, postfix: EXECUTION_ID })}`;
 
-  let promise = null;
+  let elementCount = 0;
 
   if (manipulation === OVERFLOW) {
-    promise = generateOverflowScreenshots({ page, containers, filepath });
-    // } else if (manipulation === OVERLAP) {
-    //   promise = page.evaluate(
-    //     async (containers: ContainerList, generateOverlapScreenshots, filepath: string) => {
-    //       return await generateOverlapScreenshots({ containers, filepath });
-    //     },
-    //     containers,
-    //     filepath
-    //   );
+    elementCount = await generateOverflowScreenshots({ page, containers });
+  } else if (manipulation === OVERLAP) {
+    elementCount = await generateOverlapScreenshots({ containers, page });
   } else if (manipulation === UNTOUCHED) {
-    promise = screenshotElements({ page, elements: containers, filepath });
+    elementCount = await screenshotElements({ page, elements: containers, filepath });
   } else {
     throw "Unknown manipulation";
   }
 
-  promise.catch((err) => {
-    console.log("Error in manipulation", err);
-    return 0;
-  });
+  // promise.catch((err) => {
+  //   console.log("Error in manipulation", err);
+  //   return 0;
+  // });
 
-  const elementCount = await promise;
   //await screenshotRects(page, rects, folderName, viewport, site);
-  console.log(
-    `Number of ${manipulation.toUpperCase()} rects is  ${elementCount} for site ${site} in ${viewport.width}x${viewport.height}.`
-  );
+  console.log(`Number of ${manipulation.toUpperCase()} rects is ${elementCount} for site ${site} in ${viewport.width}x${viewport.height}.`);
 
   await page.screenshot({
-    path: `${entirePagesFolder}/${getFileName({ viewport, url: site, prefix: EXECUTION_ID, postfix: manipulation })}.png`
+    path: `${entirePagesFolder}/${filename}.png`
   });
 
   if (manipulation === UNTOUCHED) {
-    // show containers with red border for debugging
+    // add red border to containers  for debugging:
     await page.evaluate(async function (containers) {
       await Promise.all(containers.map((el) => ((el as HTMLElement).style["border"] = "1px solid red")));
     }, containers);
