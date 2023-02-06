@@ -24,7 +24,7 @@ const UNTOUCHED = "untouched";
 const OVERFLOW = "overflow";
 const OVERLAP = "overlap";
 
-const manipulations = [UNTOUCHED, OVERFLOW, OVERLAP] as const;
+const MANIPULATIONS = [UNTOUCHED, OVERFLOW, OVERLAP] as const;
 
 type Manipulation = typeof manipulations[number];
 
@@ -40,24 +40,26 @@ interface Args {
   folder?: string;
   debug?: string;
   site?: string;
-  manipulation?: Manipulation;
+  manipulations?: string;
   _?: unknown; //something added by minimist?
 }
 const { _: _throwaway, ...args }: Args = minimist<Args>(process.argv.slice(2));
 
 const DEFAULT_FOLDER = "layout-breaker-images";
-const { manipulation, folder: BASE_FOLDER = DEFAULT_FOLDER, debug, contindex, site: SITE, ...extraArgs } = args;
+const { manipulations: argsManipulations, folder: BASE_FOLDER = DEFAULT_FOLDER, debug, contindex, site: SITE, ...extraArgs } = args;
 
 const CONT_INDEX = contindex ? parseInt(contindex) : undefined;
 const DEBUG_MODE = !!debug;
+
+const manipulations = argsManipulations ? argsManipulations.split(",").map((_) => _.trim()) : MANIPULATIONS;
 
 if (Object.keys(extraArgs).length > 0) {
   console.error(`Unknown command line argument(s): ${JSON.stringify(extraArgs)}.`);
   process.exit();
 }
 
-if (manipulation && !manipulations.includes(manipulation)) {
-  console.error(`Incorrect manipulation argument: ${manipulation}.`);
+if (argsManipulations && manipulations.some((manipulation) => !MANIPULATIONS.includes(manipulation))) {
+  console.error(`Incorrect manipulations argument: ${argsManipulations}.`);
   process.exit();
 }
 
@@ -105,10 +107,8 @@ const RUN_PARALLEL = true;
   const sites = SITE && SITE.length ? [SITE] : SITES;
 
   sites.forEach((site) => {
-    const filteredManipulations = manipulation ? [manipulation] : manipulations;
-
     VIEWPORTS.forEach(async (viewport) => {
-      for (const manipulation of filteredManipulations) {
+      for (const manipulation of manipulations) {
         const taskData: TaskData = {
           baseFolder: BASE_FOLDER,
           site,

@@ -13,7 +13,8 @@ export interface Params {
 
 export async function generateOverlapScreenshots(params: Params): Promise<number> {
   return params.page.evaluate(async (containers) => {
-    let count = 0;
+    //count how many elements pass the checks and actually get manipulated:
+    let elementCount = 0;
 
     await Promise.all(
       Array.from(containers).map(async (container: HTMLElement, idx: number) => {
@@ -21,6 +22,8 @@ export async function generateOverlapScreenshots(params: Params): Promise<number
         const randomChildIdx = getRandomInt(0, container.childElementCount - 1);
         const child = container.children[randomChildIdx] as HTMLElement;
         const childCount = container.childElementCount;
+
+        // require more than one children:
         if (childCount <= 1) {
           return Promise.resolve();
         }
@@ -43,7 +46,7 @@ export async function generateOverlapScreenshots(params: Params): Promise<number
         const { display: prevDisplay } = child.style;
         child.style[`margin-${siblingFacingSide}`] = `-${offset}px`;
         child.style.display = `inline-block`;
-        count++;
+        elementCount++;
         //@ts-ignore 'Cannot find namescreenshotRect'
         await screenshotRect({ rect: contRect, filepath: `${await getFileNamePrefix()}${idx}` });
 
@@ -52,7 +55,7 @@ export async function generateOverlapScreenshots(params: Params): Promise<number
         child.style[`margin-${siblingFacingSide}`] = `${prevMargin}`;
       })
     );
-    return count;
+    return elementCount;
 
     function meanOfAbs(arr: number[]): number {
       const sum = arr.reduce((prev, curr) => {

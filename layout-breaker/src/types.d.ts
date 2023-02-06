@@ -6,3 +6,7 @@ export type Resolution = {
 };
 
 export type ContainerList = JSHandle<HTMLElement[]>;
+
+window.createGreeting = function (s) {
+  return "Hello, " + s;
+};
