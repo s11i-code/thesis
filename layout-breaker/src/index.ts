@@ -3,13 +3,13 @@ import minimist from "minimist";
 import puppeteer from "puppeteer";
 import { Cluster } from "puppeteer-cluster";
 import generateHash from "random-hash";
+import randomWords from "random-words";
 import { Resolution } from "./types";
-import { ensureFolderExists, getFileName, screenshotElements } from "./utils";
+import { ensureFolderExists, getFileName, screenshotElements, screenshotRect } from "./utils";
+import { attemptCookieConsent } from "./cookies";
 import { getContainers } from "./getContainers";
 import { Page } from "puppeteer";
 import SITES from "./sites";
-import { screenshotRect } from "./utils";
-import randomWords from "random-words";
 
 // ways of sharing:
 // - addScriptTag
@@ -36,23 +36,28 @@ const VIEWPORTS: Resolution[] = [
 ];
 
 interface Args {
-  folder: string;
-  debug: string;
-  contindex: string;
-  site: string;
-  _: any; //something added by minimist?
+  contindex?: string;
+  folder?: string;
+  debug?: string;
+  site?: string;
+  manipulation?: Manipulation;
+  _?: unknown; //something added by minimist?
 }
-const args: Args = filterObject(minimist<Args>(process.argv.slice(2)), ["_"]);
+const { _: _throwaway, ...args }: Args = minimist<Args>(process.argv.slice(2));
 
 const DEFAULT_FOLDER = "layout-breaker-images";
-const { folder: BASE_FOLDER = DEFAULT_FOLDER, debug, contindex, site: SITE, _, ...extraArgs } = args;
+const { manipulation, folder: BASE_FOLDER = DEFAULT_FOLDER, debug, contindex, site: SITE, ...extraArgs } = args;
 
-debugger;
 const CONT_INDEX = contindex ? parseInt(contindex) : undefined;
 const DEBUG_MODE = !!debug;
 
 if (Object.keys(extraArgs).length > 0) {
-  console.error(`Unknown command line argument(s): ${extraArgs}.`);
+  console.error(`Unknown command line argument(s): ${JSON.stringify(extraArgs)}.`);
+  process.exit();
+}
+
+if (manipulation && !manipulations.includes(manipulation)) {
+  console.error(`Incorrect manipulation argument: ${manipulation}.`);
   process.exit();
 }
 
@@ -100,8 +105,10 @@ const RUN_PARALLEL = true;
   const sites = SITE && SITE.length ? [SITE] : SITES;
 
   sites.forEach((site) => {
+    const filteredManipulations = manipulation ? [manipulation] : manipulations;
+
     VIEWPORTS.forEach(async (viewport) => {
-      for (const manipulation of manipulations) {
+      for (const manipulation of filteredManipulations) {
         const taskData: TaskData = {
           baseFolder: BASE_FOLDER,
           site,
@@ -112,14 +119,12 @@ const RUN_PARALLEL = true;
         if (cluster) {
           cluster.queue(taskData);
         } else {
-          if (manipulation === OVERLAP) {
-            const browser = await puppeteer.launch();
-            const page = await browser.newPage();
-            await scrapeSite({ page, data: taskData }).catch((err) => {
-              console.error("Encountered error", JSON.stringify(err));
-              console.error("Encountered error", err.stack);
-            });
-          }
+          const browser = await puppeteer.launch();
+          const page = await browser.newPage();
+          await scrapeSite({ page, data: taskData }).catch((err) => {
+            console.error("Encountered error", JSON.stringify(err));
+            console.error("Encountered error", err.stack);
+          });
         }
       }
     });
@@ -143,6 +148,8 @@ async function scrapeSite({ page, data }: { page: Page; data: TaskData }): Promi
 
   await page.addScriptTag({ path: "./build/browser-context/index.js" });
 
+  await attemptCookieConsent(page);
+
   // print page context logs to terminal(=node context):
   page.on("console", (consoleObj) => {
     console.log(consoleObj.text());
@@ -156,7 +163,6 @@ async function scrapeSite({ page, data }: { page: Page; data: TaskData }): Promi
   const filename = getFileName({ viewport, url: site, prefix: EXECUTION_ID, postfix: manipulation });
   await ensureFolderExists(entirePagesFolder);
 
-  console.log("FILENAME", `${folderName}/${filename}`);
   await page.exposeFunction("screenshotRect", (params) => screenshotRect(page, params));
   await page.exposeFunction("getFileNamePrefix", () => `${folderName}/${filename}`);
   await page.exposeFunction("randomWords", randomWords);
@@ -199,8 +205,4 @@ async function scrapeSite({ page, data }: { page: Page; data: TaskData }): Promi
       path: `${entirePagesFolder}/${getFileName({ viewport, url: site, prefix: EXECUTION_ID, postfix: "containers" })}.png`
     });
   }
-}
-
-function filterObject<T extends Record<string, any>, K extends string>(o: T, keys: K[]): Omit<T, K> {
-  return Object.fromEntries(Object.entries(o).filter(([key]) => keys.includes(key))) as Omit<T, K>;
 }
